@@ -1,1 +1,0 @@
-"""Simple GAIA Agent package."""
