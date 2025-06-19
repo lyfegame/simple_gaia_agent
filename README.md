@@ -63,22 +63,20 @@ python main.py --task "Your question here" --verbose
 ## Testing
 
 ```bash
-# Test imports (no API key needed)
+# Run the test suite
 ./test.sh
-
-# Test with API calls and verify answers
-python test_flow.py
 ```
 
-The full test (`test_flow.py`) runs several questions and verifies:
-- Math: "What is 2 + 2?" → 4
-- Geography: "What is the capital of France?" → Paris  
-- Science: "Is water H2O?" → Yes
+This runs a unified test that:
+1. Tests imports
+2. Tests simple questions (if API key is set):
+   - Math: "What is 2 + 2?" → 4
+   - Geography: "What is the capital of France?" → Paris
 
 ## Files
 
 - `main.py` - Entry point, orchestrates the two agents (supports `--verbose` flag)
 - `agent.py` - Agent definitions  
 - `tools.py` - Web search, scraping, file reading (with logging)
-- `requirements.txt` - Python dependencies
-- `test_flow.py` - Tests the agents with sample questions 
+- `test.py` - Unified test suite (imports + simple questions)
+- `requirements.txt` - Python dependencies 

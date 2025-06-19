@@ -56,9 +56,9 @@ chmod +x run.sh
 echo "🧪 Creating test script..."
 cat > test.sh << 'EOF'
 #!/bin/bash
-# Run the import test
+# Run the unified test
 source venv/bin/activate
-python test_import.py
+python test.py
 EOF
 chmod +x test.sh
 
