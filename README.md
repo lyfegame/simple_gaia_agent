@@ -8,7 +8,8 @@ A minimal two-agent system for solving GAIA benchmark tasks using web search and
 # Clone and enter the directory
 cd simple_gaia_agent
 
-# Install everything
+# Make install script executable and run it
+chmod +x install.sh
 ./install.sh
 
 # Set your OpenAI API key
