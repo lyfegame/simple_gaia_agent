@@ -55,6 +55,9 @@ source venv/bin/activate
 
 # Run directly
 python main.py --task "Your question here"
+
+# With verbose logging
+python main.py --task "Your question here" --verbose
 ```
 
 ## Testing
@@ -63,13 +66,19 @@ python main.py --task "Your question here"
 # Test imports (no API key needed)
 ./test.sh
 
-# Test with API calls
+# Test with API calls and verify answers
 python test_flow.py
 ```
 
+The full test (`test_flow.py`) runs several questions and verifies:
+- Math: "What is 2 + 2?" → 4
+- Geography: "What is the capital of France?" → Paris  
+- Science: "Is water H2O?" → Yes
+
 ## Files
 
-- `main.py` - Entry point, orchestrates the two agents
+- `main.py` - Entry point, orchestrates the two agents (supports `--verbose` flag)
 - `agent.py` - Agent definitions  
-- `tools.py` - Web search, scraping, file reading
-- `requirements.txt` - Python dependencies 
+- `tools.py` - Web search, scraping, file reading (with logging)
+- `requirements.txt` - Python dependencies
+- `test_flow.py` - Tests the agents with sample questions 

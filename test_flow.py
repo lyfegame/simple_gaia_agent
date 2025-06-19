@@ -15,56 +15,92 @@ from agent import get_answer_agent, get_gaia_agent
 
 
 async def test_agent_flow():
-    """Test the two-agent flow with a simple task."""
+    """Test the two-agent flow with simple tasks and verify answers."""
     print("🧪 Testing GAIA Agent Flow")
     print("=" * 50)
 
-    # Test task
-    test_task = "What is 2 + 2?"
+    # Test cases with expected answers
+    test_cases = [
+        {"task": "What is 2 + 2?", "expected": "4"},
+        {"task": "What is the capital of France?", "expected": "Paris"},
+        {"task": "Is water H2O? Answer yes or no.", "expected": ["yes", "Yes"]},
+    ]
 
-    try:
-        # Test Research Agent
-        print("\n1️⃣ Testing Research Agent...")
-        research_agent = get_gaia_agent()
-        research_result = await Runner.run(research_agent, test_task)
+    all_passed = True
 
-        if not research_result or not research_result.final_output:
-            print("❌ Research agent failed to produce output")
-            return False
+    for i, test_case in enumerate(test_cases, 1):
+        test_task = test_case["task"]
+        expected = test_case["expected"]
 
-        print("✅ Research agent produced output")
-        print(f"   Output length: {len(research_result.final_output)} chars")
+        print(f"\n📝 Test {i}: {test_task}")
+        print("-" * 40)
 
-        # Test Answer Agent
-        print("\n2️⃣ Testing Answer Agent...")
-        answer_agent = get_answer_agent()
+        try:
+            # Test Research Agent
+            print("🔍 Running research agent...")
+            research_agent = get_gaia_agent()
+            research_result = await Runner.run(research_agent, test_task)
 
-        answer_input = f"""Original Task: {test_task}
+            if not research_result or not research_result.final_output:
+                print("❌ Research agent failed to produce output")
+                all_passed = False
+                continue
+
+            # Test Answer Agent
+            print("📝 Running answer agent...")
+            answer_agent = get_answer_agent()
+
+            answer_input = f"""Original Task: {test_task}
 
 Research Agent Output:
 {research_result.final_output}
 
 Based on the research above, provide a clear, concise answer to the original task."""
 
-        answer_result = await Runner.run(answer_agent, answer_input)
+            answer_result = await Runner.run(answer_agent, answer_input)
 
-        if not answer_result or not answer_result.final_output:
-            print("❌ Answer agent failed to produce output")
-            return False
+            if not answer_result or not answer_result.final_output:
+                print("❌ Answer agent failed to produce output")
+                all_passed = False
+                continue
 
-        print("✅ Answer agent produced output")
-        print(f"   Final answer: {answer_result.final_output}")
+            final_answer = answer_result.final_output.strip()
+            print(f"   Answer: {final_answer}")
 
-        # Verify the answer is concise
-        if len(answer_result.final_output) > 500:
-            print("⚠️  Warning: Answer might not be concise enough")
+            # Verify the answer
+            if isinstance(expected, list):
+                # Multiple acceptable answers
+                if any(
+                    final_answer.lower() == exp.lower()
+                    or exp.lower() in final_answer.lower()
+                    for exp in expected
+                ):
+                    print("✅ Answer is correct!")
+                else:
+                    print(f"❌ Answer is incorrect. Expected one of: {expected}")
+                    all_passed = False
+            else:
+                # Single expected answer
+                if (
+                    final_answer.lower() == expected.lower()
+                    or expected.lower() in final_answer.lower()
+                ):
+                    print("✅ Answer is correct!")
+                else:
+                    print(f"❌ Answer is incorrect. Expected: {expected}")
+                    all_passed = False
 
-        print("\n✅ All tests passed!")
-        return True
+        except Exception as e:
+            print(f"❌ Test failed with error: {str(e)}")
+            all_passed = False
 
-    except Exception as e:
-        print(f"\n❌ Test failed with error: {str(e)}")
-        return False
+    print("\n" + "=" * 50)
+    if all_passed:
+        print("✅ All tests passed!")
+    else:
+        print("❌ Some tests failed.")
+
+    return all_passed
 
 
 def main():

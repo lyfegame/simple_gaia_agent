@@ -2,9 +2,14 @@
 GAIA Agent definitions - Research agent and Answer agent.
 """
 
+import logging
+
 from agents import Agent
 
 from tools import GAIA_TOOLS
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 # Research agent with full capabilities
 gaia_agent = Agent(
@@ -48,9 +53,11 @@ Guidelines:
 
 def get_gaia_agent() -> Agent:
     """Get the GAIA research agent."""
+    logger.debug("Creating GAIA research agent")
     return gaia_agent
 
 
 def get_answer_agent() -> Agent:
     """Get the answer synthesis agent."""
+    logger.debug("Creating answer synthesis agent")
     return answer_agent
