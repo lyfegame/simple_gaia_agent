@@ -77,6 +77,14 @@ Based on the research above, provide a clear, concise answer to the original tas
     print(final_answer)
     print("=" * 50)
 
+    # Write the final answer to a file for the executor
+    try:
+        with open("final_answer.txt", "w") as f:
+            f.write(final_answer)
+        logger.info("Final answer written to final_answer.txt")
+    except Exception as e:
+        logger.error(f"Failed to write final answer to file: {e}")
+
     return final_answer, research_output
 
 
@@ -89,6 +97,9 @@ def main():
     parser = argparse.ArgumentParser(description="Simple GAIA agent for solving tasks")
     parser.add_argument(
         "--task", type=str, required=True, help="The task/question to solve"
+    )
+    parser.add_argument(
+        "--file", type=str, help="Path to a file to analyze for the task"
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"
