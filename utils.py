@@ -1,5 +1,13 @@
 import logging
 import sys
+from agents import (
+    HandoffOutputItem,
+    ItemHelpers,
+    MessageOutputItem,
+    ToolCallItem,
+    ToolCallOutputItem,
+)
+from openai.types.responses import ResponseFunctionToolCall
 
 logger = logging.getLogger(__name__)
 
@@ -32,51 +40,24 @@ def log_agent_output(result):
 
     # Log each new item with simplified information
     for new_item in result.new_items:
-        agent_name = new_item.agent.name if hasattr(new_item, "agent") else "Unknown"
-        item_type = new_item.__class__.__name__
-
-        # Handle different types of items with clean, concise logging
-        if "Message" in item_type:
-            # Extract just the text content from message
-            if hasattr(new_item, "raw_item") and hasattr(new_item.raw_item, "content"):
-                # Get the actual message text
-                content = new_item.raw_item.content
-                if isinstance(content, list) and len(content) > 0:
-                    message_text = (
-                        content[0].text
-                        if hasattr(content[0], "text")
-                        else str(content[0])
-                    )
-                else:
-                    message_text = str(content)
+        agent_name = new_item.agent.name
+        if isinstance(new_item, MessageOutputItem):
+            logger.info(f"{agent_name}: {ItemHelpers.text_message_output(new_item)}")
+        elif isinstance(new_item, HandoffOutputItem):
+            logger.info(
+                f"Handed off from {new_item.source_agent.name} to {new_item.target_agent.name}"
+            )
+        elif isinstance(new_item, ToolCallItem):
+            if isinstance(
+                new_item.raw_item,
+                (ResponseFunctionToolCall,),
+            ):
+                logger.info(
+                    f"{agent_name}: Tool call: {new_item.raw_item.name}({new_item.raw_item.arguments})"
+                )
             else:
-                message_text = getattr(new_item, "content", str(new_item))
-
-            # Clean up agent name for display
-            display_name = agent_name.replace("_", " ").title()
-            logger.info(f"💬 {display_name}: {message_text}")
-
-        elif "Handoff" in item_type:
-            # Clean handoff logging
-            source = getattr(new_item, "source_agent", {})
-            target = getattr(new_item, "target_agent", {})
-            source_name = getattr(source, "name", "Unknown").replace("_", " ").title()
-            target_name = getattr(target, "name", "Unknown").replace("_", " ").title()
-            logger.info(f"🔄 Handoff: {source_name} → {target_name}")
-
-        elif "ToolCall" in item_type and "Output" not in item_type:
-            # Tool call logging
-            tool_name = getattr(
-                new_item, "tool_name", getattr(new_item, "name", "Unknown Tool")
-            )
-            display_name = agent_name.replace("_", " ").title()
-            logger.info(f"🔧 {display_name}: Using tool '{tool_name}'")
-
-        elif "ToolCall" in item_type and "Output" in item_type:
-            # Tool output logging (shortened)
-            output = getattr(new_item, "output", str(new_item))
-            output_preview = (
-                str(output)[:150] + "..." if len(str(output)) > 150 else str(output)
-            )
-            display_name = agent_name.replace("_", " ").title()
-            logger.info(f"📄 {display_name}: Tool result: {output_preview}")
+                logger.info(f"{agent_name}: Tool call: {new_item.raw_item}")
+        elif isinstance(new_item, ToolCallOutputItem):
+            logger.info(f"{agent_name}: Tool call output: {new_item.output}")
+        else:
+            logger.info(f"{agent_name}: Skipping item: {new_item.__class__.__name__}")
