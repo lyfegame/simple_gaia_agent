@@ -6,6 +6,7 @@ import asyncio
 import logging
 import os
 import sys
+import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -25,6 +26,57 @@ def test_imports():
         return True
     except Exception as e:
         logger.info(f"❌ Import failed: {str(e)}")
+        return False
+
+
+async def test_tools():
+    """Test individual tools."""
+    logger.info("\n🔧 Testing tools...")
+
+    try:
+        from tools import web_search, web_scrape, file_read
+
+        # Test file_read tool directly (requires ctx parameter)
+        logger.info("   Testing file_read tool...")
+        # Call tool directly - file_read requires ctx as first parameter
+        result = await file_read.on_invoke_tool(
+            ctx=None, input=json.dumps({"filename": "README.md"})
+        )  # Pass None for ctx since it's not used
+        if result and "GAIA" in result:
+            logger.info("   ✅ file_read tool works")
+        else:
+            logger.info(f"   ❌ file_read tool failed: {result}")
+            return False
+
+        # Test using on_invoke_tool syntax for web_search
+        if os.getenv("OPENAI_API_KEY"):
+            logger.info("   Testing web_search tool...")
+            result = await web_search.on_invoke_tool(
+                ctx=None, input=json.dumps({"query": "Python programming language"})
+            )
+            if result and not result.startswith("Web search error"):
+                logger.info("   ✅ web_search tool works")
+            else:
+                logger.info(f"   ❌ web_search tool failed: {result}")
+                return False
+        else:
+            logger.info("   ⚠️ Skipping web_search (no API key)")
+
+        # Test web_scrape tool directly
+        logger.info("   Testing web_scrape tool...")
+        result = await web_scrape.on_invoke_tool(
+            ctx=None,
+            input=json.dumps({"url": "https://httpbin.org/html"}),
+        )
+        if result and not result.startswith("Error scraping"):
+            logger.info("   ✅ web_scrape tool works")
+        else:
+            logger.info(f"   ❌ web_scrape tool failed: {result}")
+            return False
+
+        return True
+    except Exception as e:
+        logger.info(f"   ❌ Tool test failed: {str(e)}")
         return False
 
 
@@ -72,6 +124,10 @@ async def main():
 
     # Test imports
     if not test_imports():
+        return False
+
+    # Test tools
+    if not await test_tools():
         return False
 
     # Check API key
