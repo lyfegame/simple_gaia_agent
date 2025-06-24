@@ -3,31 +3,34 @@ Simple unified test for the GAIA agent.
 """
 
 import asyncio
+import logging
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from dotenv import load_dotenv
+from utils import configure_logging
 
 # Load env vars
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 def test_imports():
     """Test that all imports work."""
-    print("🔧 Testing imports...")
+    logger.info("🔧 Testing imports...")
     try:
-        print("✅ Imports successful")
+        logger.info("✅ Imports successful")
         return True
     except Exception as e:
-        print(f"❌ Import failed: {str(e)}")
+        logger.info(f"❌ Import failed: {str(e)}")
         return False
 
 
 async def test_questions():
     """Test with simple questions."""
-    print("\n📝 Testing simple questions...")
+    logger.info("\n📝 Testing simple questions...")
 
     from agents import Runner
 
@@ -39,7 +42,7 @@ async def test_questions():
     ]
 
     for question, expected in tests:
-        print(f"\n   Q: {question}")
+        logger.info(f"\n   Q: {question}")
         try:
             # Get answer through the two-agent flow
             research = await Runner.run(get_gaia_agent(), question)
@@ -47,16 +50,16 @@ async def test_questions():
             answer = await Runner.run(get_answer_agent(), answer_input)
 
             result = answer.final_output.strip()
-            print(f"   A: {result}")
+            logger.info(f"   A: {result}")
 
             # Check if answer contains expected
             if expected.lower() in result.lower():
-                print("   ✅")
+                logger.info("   ✅")
             else:
-                print(f"   ❌ Expected: {expected}")
+                logger.info(f"   ❌ Expected: {expected}")
                 return False
         except Exception as e:
-            print(f"   ❌ Error: {str(e)}")
+            logger.info(f"   ❌ Error: {str(e)}")
             return False
 
     return True
@@ -64,7 +67,8 @@ async def test_questions():
 
 async def main():
     """Run all tests."""
-    print("🧪 Running GAIA Agent Tests\n")
+    configure_logging()
+    logger.info("🧪 Running GAIA Agent Tests\n")
 
     # Test imports
     if not test_imports():
@@ -72,15 +76,15 @@ async def main():
 
     # Check API key
     if not os.getenv("OPENAI_API_KEY"):
-        print("\n⚠️  No API key found. Skipping question tests.")
-        print("💡 Set OPENAI_API_KEY to test with real questions.")
+        logger.info("\n⚠️  No API key found. Skipping question tests.")
+        logger.info("💡 Set OPENAI_API_KEY to test with real questions.")
         return True
 
     # Test questions
     if not await test_questions():
         return False
 
-    print("\n✅ All tests passed!")
+    logger.info("\n✅ All tests passed!")
     return True
 
 
