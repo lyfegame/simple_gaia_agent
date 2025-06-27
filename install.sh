@@ -15,7 +15,8 @@ fi
 
 # Create virtual environment
 echo "📦 Creating virtual environment..."
-python3 -m venv venv
+# Make sure pyenv is using the correct version
+python3.13 -m venv venv
 
 # Activate virtual environment
 echo "🔄 Activating virtual environment..."
