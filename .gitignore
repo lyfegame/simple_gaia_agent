@@ -226,3 +226,6 @@ Thumbs.db
 run.sh
 gaia_output.txt
 *.log
+
+# Results
+results/

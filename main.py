@@ -7,7 +7,8 @@ import asyncio
 import logging
 import os
 import sys
-from utils import log_agent_output, configure_logging
+
+from utils import configure_logging, log_agent_output
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -16,11 +17,10 @@ from dotenv import load_dotenv
 
 from agent import get_answer_agent, get_gaia_agent
 
-
 logger = logging.getLogger(__name__)
 
 
-async def run_task(task: str):
+async def run_task(task: str, file_path: str = None):
     """Run the task through GAIA agent and then through answer agent for concise response."""
 
     logger.info("🚀 Starting GAIA agent system...")
@@ -105,12 +105,15 @@ def main():
         "--task", type=str, required=True, help="The task/question to solve"
     )
     parser.add_argument(
-        "--file", type=str, help="Path to a file to analyze for the task"
+        "--file_path",
+        type=str,
+        default=None,
+        help="Path to a file to analyze for the task",
     )
     args = parser.parse_args()
 
     # Run the task
-    asyncio.run(run_task(args.task))
+    asyncio.run(run_task(args.task, args.file_path))
 
 
 if __name__ == "__main__":
