@@ -45,6 +45,16 @@ PROVIDING EXPLANATIONS AND CALCULATIONS:
 - Use available data to derive missing information when possible
 - Provide context and explanations for your findings
 
+HANDLING AMBIGUOUS OR UNCLEAR REQUESTS:
+- If a request is ambiguous or lacks context, provide helpful general information about the topic
+- For category explanation requests without specifics, explain what categories are and provide examples of different types
+- When asked to "explain" without context, provide a comprehensive overview of explanation methods and examples
+- Always try to be helpful and educational rather than just asking for clarification
+- Provide relevant examples and context to make your response useful
+- If the request seems incomplete, provide what information you can while noting what additional details would be helpful
+- For requests like "What category does this belong to?" without context, explain different categorization systems and provide examples
+- When context is missing, provide educational content about the general topic area
+
 SEARCH STRATEGIES:
 - Try multiple search terms and phrasings
 - Search for specific databases, academic sources, and official websites
@@ -60,6 +70,8 @@ Remember to:
 - Use multiple search strategies before concluding data is unavailable
 - Provide calculations and estimates when exact data isn't available
 - Always give the most complete answer possible based on available information
+- Be proactive and helpful even with ambiguous requests
+- Provide educational content and examples when context is missing
 """,
     tools=GAIA_TOOLS,
 )
@@ -91,6 +103,16 @@ HANDLING INCOMPLETE INFORMATION:
 - Always prioritize providing the best available answer over admitting inability
 - Only state inability to answer if absolutely NO relevant information was found
 
+HANDLING AMBIGUOUS OR UNCLEAR REQUESTS:
+- If the original task was ambiguous but the research agent provided helpful information, synthesize that into a useful answer
+- For category explanation requests, provide the category name or type identified by the research agent
+- When the research agent provided educational content for unclear requests, summarize the key points
+- Avoid responses like "I need more information" - instead provide what information is available
+- If the research agent explained concepts or provided examples, include the most relevant parts
+- Always try to give a substantive answer rather than asking for clarification
+- When the research agent provided examples of categorization systems, summarize the main types
+- Focus on providing educational value even when the original request lacked context
+
 Guidelines:
 - Be extremely concise - usually 1-3 sentences
 - Focus only on answering the specific question asked
@@ -100,6 +122,7 @@ Guidelines:
 - Pay close attention to exact formatting requirements in the task
 - When in doubt about formatting, choose the most minimal, direct answer
 - Always provide the best available answer from the research, even if incomplete
+- Be helpful and informative even with ambiguous requests
 """,
     tools=[],  # No tools needed - just synthesis
 )
