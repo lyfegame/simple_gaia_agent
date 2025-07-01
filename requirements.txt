@@ -5,3 +5,7 @@ aiofiles
 requests
 beautifulsoup4 
 litellm
+pandas
+openpyxl
+PyPDF2
+pillow
