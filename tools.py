@@ -258,53 +258,25 @@ async def search_and_scrape(query: str, max_results: int = 3) -> str:
     """
     Search the web and automatically scrape the top results for comprehensive information.
 
+    Note: This function cannot directly perform web searches as the WebSearchTool is designed for LLM use only.
+    Instead, it provides guidance on using the web_search tool.
+
     Args:
         query: Search query
         max_results: Maximum number of results to scrape (default: 3)
     """
     logger.info(f"Search and scrape called for query: {query}")
 
-    try:
-        # First, perform a web search
-        from agents import WebSearchTool
-        search_tool = WebSearchTool()
+    return f"""To search for "{query}", you should use the web_search tool directly in your conversation.
 
-        # Perform the search
-        search_results = await search_tool.run(query)
+The search_and_scrape function cannot directly perform web searches as the WebSearchTool is designed for LLM use only.
 
-        if not search_results or "No results found" in search_results:
-            return f"No search results found for: {query}"
+Instead, please:
+1. Use the web_search tool to search for: {query}
+2. Then use web_scrape to scrape specific URLs from the search results
+3. Or use the ResponseFunctionWebSearch in your conversation
 
-        # Extract URLs from search results (this is a simplified approach)
-        import re
-        urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', search_results)
-
-        if not urls:
-            return f"Search results found but no URLs extracted for: {query}\n\nSearch results:\n{search_results}"
-
-        # Scrape the top results
-        scraped_content = []
-        scraped_content.append(f"Search results for: {query}\n")
-        scraped_content.append(search_results)
-        scraped_content.append("\n" + "="*50 + "\n")
-
-        for i, url in enumerate(urls[:max_results]):
-            try:
-                logger.info(f"Scraping URL {i+1}/{max_results}: {url}")
-                content = await web_scrape(url)
-                scraped_content.append(f"Content from {url}:\n{content}\n")
-                scraped_content.append("="*50 + "\n")
-            except Exception as e:
-                logger.warning(f"Failed to scrape {url}: {e}")
-                scraped_content.append(f"Failed to scrape {url}: {e}\n")
-
-        result = "\n".join(scraped_content)
-        logger.info(f"Search and scrape completed for query: {query}")
-        return result
-
-    except Exception as e:
-        logger.error(f"Search and scrape failed for {query}: {str(e)}")
-        return f"Error in search and scrape for {query}: {str(e)}"
+This approach will give you better results than this combined function."""
 
 
 # Available tools
