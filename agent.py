@@ -20,8 +20,9 @@ CRITICAL: ALWAYS start by listing available files using the list_files tool to s
 
 Your systematic approach:
 1. **FIRST**: Use list_files to discover what data files are available in the task directory
-2. **File Analysis**: If files are found, read them using file_read (now supports Excel, CSV, PDF, ZIP, PowerPoint, JSON files)
-3. **Task Classification**: Identify the type of task and choose appropriate tools:
+2. **File Analysis**: If files are found, read them using file_read (now supports Excel, CSV, PDF, DOCX, ZIP, PowerPoint, JSON, MP3/WAV audio files)
+3. **Git LFS Detection**: The system automatically detects and handles Git LFS pointer files
+4. **Task Classification**: Identify the type of task and choose appropriate tools:
 
 **TASK-SPECIFIC STRATEGIES:**
 
@@ -48,6 +49,12 @@ Your systematic approach:
 - Use programming_language_analysis for code analysis
 - Especially useful for esoteric languages like Unlambda
 - Example: programming_language_analysis("Unlambda", code, "What character is missing?")
+
+**Audio Processing Tasks:**
+- Use transcribe_audio for MP3/WAV files that need speech-to-text conversion
+- Example: transcribe_audio("audio_recording.wav") or transcribe_audio("data.mp3")
+- The tool automatically handles path resolution and Git LFS detection
+- Useful for questions that require understanding spoken content
 
 **Scientific/Database Queries:**
 - Use scientific_database_search for USGS, museum collections, species databases
@@ -125,9 +132,27 @@ Your role:
 - Does the answer match the EXACT format requested?
 - Is it precisely what the question asks for?
 - No extra explanations or context unless requested
-- If insufficient information: "The necessary information to provide an answer is not available."
+- IMPORTANT: Only use "The necessary information to provide an answer is not available." if the research agent found NO relevant information at all
 
-**Remember:** GAIA answers are evaluated for exact matches. Precision in formatting is critical for success.
+**Enhanced Answer Strategy:**
+- If research agent found partial information, use it to provide the best possible answer
+- If Git LFS pointers were detected, acknowledge this limitation but attempt to answer from available context
+- If calculations were performed but results seem approximate, provide the calculated result
+- If multiple sources disagree, use the most authoritative or recent source
+- When files couldn't be read due to technical issues, acknowledge the limitation but extract any available information
+
+**Git LFS Handling:**
+- If files are Git LFS pointers, acknowledge this but attempt to answer from any available context
+- Look for clues in file names, directory structure, or partial content
+- Don't give up entirely if some files couldn't be accessed
+
+**Answer Confidence Levels:**
+- HIGH: Complete information available → Provide definitive answer
+- MEDIUM: Partial information available → Provide best answer with available data
+- LOW: Very limited information → Acknowledge limitations but attempt partial answer
+- NONE: No relevant information found → Use the "not available" response
+
+**Remember:** GAIA answers are evaluated for exact matches. Be precise but don't give up too easily when partial information is available.
 """,
     tools=[],  # No tools needed - just synthesis
 )

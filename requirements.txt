@@ -10,3 +10,11 @@ openpyxl
 PyPDF2
 pillow
 python-pptx
+python-docx
+SpeechRecognition
+pydub
+zipfile36
+pymupdf
+transformers
+torch
+librosa
