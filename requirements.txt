@@ -5,3 +5,6 @@ aiofiles
 requests
 beautifulsoup4 
 litellm
+pandas
+openpyxl
+xlrd
