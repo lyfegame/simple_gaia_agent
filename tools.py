@@ -76,27 +76,245 @@ async def web_scrape(url: str) -> str:
 @function_tool
 async def file_read(ctx: RunContextWrapper, filename: str) -> str:
     """
-    Read content from a file.
+    Read content from a file. Handles various file formats and Git LFS files.
 
     Args:
         filename: Path to the file
     """
     logger.info(f"File read called for: {filename}")
+
+    import os
+    from pathlib import Path
+
     try:
-        async with aiofiles.open(filename, "r") as f:
-            content = await f.read()
-        logger.info(f"File read successful, content length: {len(content)} chars")
-        return content
+        file_path = Path(filename)
+
+        # Check if file exists
+        if not file_path.exists():
+            return f"Error: File {filename} does not exist"
+
+        # Check if it's a Git LFS file
+        with open(file_path, 'rb') as f:
+            first_line = f.readline().decode('utf-8', errors='ignore').strip()
+            if first_line.startswith('version https://git-lfs.github.com/spec/v1'):
+                return f"Error: File {filename} is stored with Git LFS and content is not available. The file appears to be a {file_path.suffix} file that needs to be downloaded from Git LFS first."
+
+        # Handle different file types
+        file_extension = file_path.suffix.lower()
+
+        if file_extension in ['.txt', '.md', '.py', '.json', '.csv', '.jsonl']:
+            # Text files
+            async with aiofiles.open(filename, "r", encoding='utf-8', errors='ignore') as f:
+                content = await f.read()
+            logger.info(f"Text file read successful, content length: {len(content)} chars")
+            return content
+
+        elif file_extension in ['.pdf']:
+            return f"Error: PDF file {filename} requires special handling. The file appears to be stored with Git LFS and is not directly accessible."
+
+        elif file_extension in ['.xlsx', '.xls']:
+            return f"Error: Excel file {filename} requires special handling. The file appears to be stored with Git LFS and is not directly accessible."
+
+        elif file_extension in ['.png', '.jpg', '.jpeg', '.gif']:
+            return f"Error: Image file {filename} requires special handling. The file appears to be stored with Git LFS and is not directly accessible."
+
+        elif file_extension in ['.mp3', '.wav']:
+            return f"Error: Audio file {filename} requires special handling. The file appears to be stored with Git LFS and is not directly accessible."
+
+        elif file_extension in ['.zip']:
+            return f"Error: Archive file {filename} requires extraction. The file appears to be stored with Git LFS and is not directly accessible."
+
+        else:
+            # Try to read as text
+            try:
+                async with aiofiles.open(filename, "r", encoding='utf-8', errors='ignore') as f:
+                    content = await f.read()
+                logger.info(f"File read as text successful, content length: {len(content)} chars")
+                return content
+            except:
+                return f"Error: Cannot read file {filename}. Unsupported file type {file_extension} or file is binary."
+
     except Exception as e:
         logger.error(f"File read failed for {filename}: {str(e)}")
         return f"Error reading {filename}: {str(e)}"
+
+
+@function_tool
+async def list_files(directory: str = ".") -> str:
+    """
+    List files and directories in the specified directory.
+
+    Args:
+        directory: Path to the directory to list (default: current directory)
+    """
+    logger.info(f"List files called for directory: {directory}")
+
+    import os
+    from pathlib import Path
+
+    try:
+        dir_path = Path(directory)
+
+        if not dir_path.exists():
+            return f"Error: Directory {directory} does not exist"
+
+        if not dir_path.is_dir():
+            return f"Error: {directory} is not a directory"
+
+        items = []
+        for item in sorted(dir_path.iterdir()):
+            if item.is_file():
+                size = item.stat().st_size
+                # Check if it's a Git LFS file
+                try:
+                    with open(item, 'rb') as f:
+                        first_line = f.readline().decode('utf-8', errors='ignore').strip()
+                        if first_line.startswith('version https://git-lfs.github.com/spec/v1'):
+                            items.append(f"📄 {item.name} (Git LFS file, {item.suffix})")
+                        else:
+                            items.append(f"📄 {item.name} ({size} bytes)")
+                except:
+                    items.append(f"📄 {item.name} ({size} bytes)")
+            elif item.is_dir():
+                items.append(f"📁 {item.name}/")
+
+        if not items:
+            return f"Directory {directory} is empty"
+
+        result = f"Contents of {directory}:\n" + "\n".join(items)
+        logger.info(f"Listed {len(items)} items in {directory}")
+        return result
+
+    except Exception as e:
+        logger.error(f"List files failed for {directory}: {str(e)}")
+        return f"Error listing {directory}: {str(e)}"
+
+
+@function_tool
+async def extract_and_list_zip(zip_path: str) -> str:
+    """
+    Extract and list contents of a zip file (if not Git LFS).
+
+    Args:
+        zip_path: Path to the zip file
+    """
+    logger.info(f"Extract and list zip called for: {zip_path}")
+
+    import zipfile
+    import tempfile
+    import os
+    from pathlib import Path
+
+    try:
+        zip_file_path = Path(zip_path)
+
+        if not zip_file_path.exists():
+            return f"Error: Zip file {zip_path} does not exist"
+
+        # Check if it's a Git LFS file
+        with open(zip_file_path, 'rb') as f:
+            first_line = f.readline().decode('utf-8', errors='ignore').strip()
+            if first_line.startswith('version https://git-lfs.github.com/spec/v1'):
+                return f"Error: Zip file {zip_path} is stored with Git LFS and cannot be extracted. The file is not directly accessible."
+
+        # Try to extract and list contents
+        with tempfile.TemporaryDirectory() as temp_dir:
+            try:
+                with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+
+                # List extracted contents
+                extracted_items = []
+                temp_path = Path(temp_dir)
+
+                for item in temp_path.rglob('*'):
+                    if item.is_file():
+                        relative_path = item.relative_to(temp_path)
+                        size = item.stat().st_size
+                        extracted_items.append(f"📄 {relative_path} ({size} bytes)")
+                    elif item.is_dir() and item != temp_path:
+                        relative_path = item.relative_to(temp_path)
+                        extracted_items.append(f"📁 {relative_path}/")
+
+                if not extracted_items:
+                    return f"Zip file {zip_path} is empty"
+
+                result = f"Contents of {zip_path}:\n" + "\n".join(extracted_items)
+                logger.info(f"Successfully extracted and listed {len(extracted_items)} items from {zip_path}")
+                return result
+
+            except zipfile.BadZipFile:
+                return f"Error: {zip_path} is not a valid zip file"
+            except Exception as e:
+                return f"Error extracting {zip_path}: {str(e)}"
+
+    except Exception as e:
+        logger.error(f"Extract zip failed for {zip_path}: {str(e)}")
+        return f"Error processing {zip_path}: {str(e)}"
+
+
+@function_tool
+async def search_and_scrape(query: str, max_results: int = 3) -> str:
+    """
+    Search the web and automatically scrape the top results for comprehensive information.
+
+    Args:
+        query: Search query
+        max_results: Maximum number of results to scrape (default: 3)
+    """
+    logger.info(f"Search and scrape called for query: {query}")
+
+    try:
+        # First, perform a web search
+        from agents import WebSearchTool
+        search_tool = WebSearchTool()
+
+        # Perform the search
+        search_results = await search_tool.run(query)
+
+        if not search_results or "No results found" in search_results:
+            return f"No search results found for: {query}"
+
+        # Extract URLs from search results (this is a simplified approach)
+        import re
+        urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', search_results)
+
+        if not urls:
+            return f"Search results found but no URLs extracted for: {query}\n\nSearch results:\n{search_results}"
+
+        # Scrape the top results
+        scraped_content = []
+        scraped_content.append(f"Search results for: {query}\n")
+        scraped_content.append(search_results)
+        scraped_content.append("\n" + "="*50 + "\n")
+
+        for i, url in enumerate(urls[:max_results]):
+            try:
+                logger.info(f"Scraping URL {i+1}/{max_results}: {url}")
+                content = await web_scrape(url)
+                scraped_content.append(f"Content from {url}:\n{content}\n")
+                scraped_content.append("="*50 + "\n")
+            except Exception as e:
+                logger.warning(f"Failed to scrape {url}: {e}")
+                scraped_content.append(f"Failed to scrape {url}: {e}\n")
+
+        result = "\n".join(scraped_content)
+        logger.info(f"Search and scrape completed for query: {query}")
+        return result
+
+    except Exception as e:
+        logger.error(f"Search and scrape failed for {query}: {str(e)}")
+        return f"Error in search and scrape for {query}: {str(e)}"
 
 
 # Available tools
 GAIA_TOOLS = [
     WebSearchTool(),
     web_scrape,
+    search_and_scrape,
     file_read,
+    list_files,
+    extract_and_list_zip,
     CodeInterpreterTool(
         tool_config={"type": "code_interpreter", "container": {"type": "auto"}}
     ),
