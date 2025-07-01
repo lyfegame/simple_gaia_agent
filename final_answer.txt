@@ -1,1 +1,1 @@
-3.12.0
+The PubChem CID of the heaviest compound by molecular weight among shared gene-chemical co-occurrences is "unable to determine" due to the research not providing a specific CID. Please conduct the search on the PubChem website as described to obtain the accurate result.
