@@ -37,59 +37,125 @@ def get_client():
 @function_tool
 async def web_scrape(url: str) -> str:
     """
-    Scrape content from a webpage.
+    Scrape content from a webpage with improved content extraction.
 
     Args:
         url: The URL to scrape
     """
     logger.info(f"Web scrape called for URL: {url}")
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Remove script and style elements
-        for script in soup(["script", "style"]):
-            script.decompose()
+        # Remove unwanted elements
+        for element in soup(["script", "style", "nav", "header", "footer", "aside", "advertisement"]):
+            element.decompose()
 
-        # Get text
-        text = soup.get_text()
-        lines = (line.strip() for line in text.splitlines())
-        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        text = "\n".join(chunk for chunk in chunks if chunk)
+        # Try to find main content areas first
+        main_content = None
+        for selector in ["main", "article", ".content", "#content", ".main", "#main"]:
+            main_content = soup.select_one(selector)
+            if main_content:
+                break
 
-        # Limit length
+        # If no main content found, use the whole body
+        if not main_content:
+            main_content = soup.find("body") or soup
+
+        # Get text with better formatting
+        text = main_content.get_text(separator="\n", strip=True)
+
+        # Clean up the text
+        lines = []
+        for line in text.split("\n"):
+            line = line.strip()
+            if line and len(line) > 2:  # Skip very short lines
+                lines.append(line)
+
+        text = "\n".join(lines)
+
+        # Limit length but try to keep complete sentences
         original_length = len(text)
-        if len(text) > 10000:
-            text = text[:10000] + "..."
-            logger.info(f"Truncated content from {original_length} to 10000 chars")
+        if len(text) > 15000:
+            # Find a good cutoff point near 15000 characters
+            cutoff = text.rfind(".", 0, 15000)
+            if cutoff > 10000:  # Make sure we don't cut too much
+                text = text[:cutoff + 1] + "\n\n[Content truncated...]"
+            else:
+                text = text[:15000] + "..."
+            logger.info(f"Truncated content from {original_length} to {len(text)} chars")
 
         logger.info(f"Web scrape successful, content length: {len(text)}")
-        return f"Content from {url}:\n{text}"
+        return f"Content from {url}:\n\n{text}"
     except Exception as e:
         logger.error(f"Web scrape failed for {url}: {str(e)}")
-        return f"Error scraping {url}: {str(e)}"
+        return f"Error scraping {url}: {str(e)}. Please try a different URL or search for the information using web search."
 
 
 @function_tool
 async def file_read(ctx: RunContextWrapper, filename: str) -> str:
     """
-    Read content from a file.
+    Read content from a file with support for various file types.
 
     Args:
         filename: Path to the file
     """
     logger.info(f"File read called for: {filename}")
     try:
-        async with aiofiles.open(filename, "r") as f:
-            content = await f.read()
+        import os
+        from pathlib import Path
+
+        file_path = Path(filename)
+
+        # Check if file exists
+        if not file_path.exists():
+            return f"Error: File '{filename}' does not exist. Please check the file path."
+
+        # Get file extension to determine how to read it
+        extension = file_path.suffix.lower()
+
+        # Handle different file types
+        if extension in ['.txt', '.md', '.py', '.js', '.html', '.css', '.json', '.xml', '.csv']:
+            # Text-based files
+            try:
+                async with aiofiles.open(filename, "r", encoding="utf-8") as f:
+                    content = await f.read()
+            except UnicodeDecodeError:
+                # Try with different encoding
+                async with aiofiles.open(filename, "r", encoding="latin-1") as f:
+                    content = await f.read()
+        elif extension in ['.docx']:
+            return f"Error: DOCX files require special handling. Please use the code interpreter tool to process this file."
+        elif extension in ['.xlsx', '.xls']:
+            return f"Error: Excel files require special handling. Please use the code interpreter tool to process this file."
+        elif extension in ['.pdf']:
+            return f"Error: PDF files require special handling. Please use the code interpreter tool to process this file."
+        elif extension in ['.mp3', '.wav', '.mp4', '.avi']:
+            return f"Error: Media files require special handling. Please use the code interpreter tool to process this file."
+        else:
+            # Try to read as text anyway
+            try:
+                async with aiofiles.open(filename, "r", encoding="utf-8") as f:
+                    content = await f.read()
+            except Exception:
+                return f"Error: Cannot read file '{filename}'. File type '{extension}' may require special handling. Please use the code interpreter tool."
+
+        # Limit content length for very large files
+        if len(content) > 50000:
+            content = content[:50000] + f"\n\n[File truncated - showing first 50,000 characters of {len(content)} total]"
+            logger.info(f"Truncated large file content")
+
         logger.info(f"File read successful, content length: {len(content)} chars")
-        return content
+        return f"Content of {filename}:\n\n{content}"
+
     except Exception as e:
         logger.error(f"File read failed for {filename}: {str(e)}")
-        return f"Error reading {filename}: {str(e)}"
+        return f"Error reading {filename}: {str(e)}. Please check the file path and permissions."
 
 
 # Available tools

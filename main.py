@@ -25,8 +25,15 @@ async def run_task(task: str, file_path: str = None):
 
     logger.info("🚀 Starting GAIA agent system...")
     logger.info(f"📋 Task: {task}")
+    if file_path:
+        logger.info(f"📁 File provided: {file_path}")
     logger.info("-" * 50)
     logger.info(f"Processing task: {task}")
+
+    # Modify task to include file information if provided
+    enhanced_task = task
+    if file_path:
+        enhanced_task = f"{task}\n\nNote: There is a file available at '{file_path}' that may be relevant to this task. Please read and analyze this file using the file_read tool."
 
     # Step 1: Run the GAIA research agent with detailed logging
     logger.info("Initializing research agent")
@@ -34,7 +41,7 @@ async def run_task(task: str, file_path: str = None):
     logger.info("🔍 Research agent working...")
 
     try:
-        research_result = await Runner.run(gaia_agent, task)
+        research_result = await Runner.run(gaia_agent, enhanced_task)
         log_agent_output(research_result)
         research_output = research_result.final_output
         logger.info(f"Research complete. Output length: {len(research_output)} chars")
