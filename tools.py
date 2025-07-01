@@ -98,6 +98,52 @@ async def web_scrape(url: str) -> str:
 
 
 @function_tool
+async def list_directory(directory: str = ".") -> str:
+    """
+    List contents of a directory to discover available files.
+
+    Args:
+        directory: Path to the directory to list (default: current directory)
+    """
+    logger.info(f"Directory listing called for: {directory}")
+    try:
+        import os
+        from pathlib import Path
+
+        dir_path = Path(directory)
+
+        # Check if directory exists
+        if not dir_path.exists():
+            return f"Error: Directory '{directory}' does not exist."
+
+        if not dir_path.is_dir():
+            return f"Error: '{directory}' is not a directory."
+
+        # List all files and directories
+        items = []
+        try:
+            for item in sorted(dir_path.iterdir()):
+                if item.is_file():
+                    size = item.stat().st_size
+                    items.append(f"📄 {item.name} ({size} bytes)")
+                elif item.is_dir():
+                    items.append(f"📁 {item.name}/")
+        except PermissionError:
+            return f"Error: Permission denied to access '{directory}'."
+
+        if not items:
+            return f"Directory '{directory}' is empty."
+
+        result = f"Contents of '{directory}':\n" + "\n".join(items)
+        logger.info(f"Directory listing successful, found {len(items)} items")
+        return result
+
+    except Exception as e:
+        logger.error(f"Directory listing failed for {directory}: {str(e)}")
+        return f"Error listing directory '{directory}': {str(e)}"
+
+
+@function_tool
 async def file_read(ctx: RunContextWrapper, filename: str) -> str:
     """
     Read content from a file with support for various file types.
@@ -162,6 +208,7 @@ async def file_read(ctx: RunContextWrapper, filename: str) -> str:
 GAIA_TOOLS = [
     WebSearchTool(),
     web_scrape,
+    list_directory,
     file_read,
     CodeInterpreterTool(
         tool_config={"type": "code_interpreter", "container": {"type": "auto"}}
