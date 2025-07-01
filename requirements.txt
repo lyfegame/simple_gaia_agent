@@ -9,3 +9,4 @@ pandas
 openpyxl
 PyPDF2
 pillow
+python-pptx
