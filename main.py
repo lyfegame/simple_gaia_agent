@@ -48,6 +48,41 @@ async def run_task(task: str, file_path: str = None):
             log_agent_output(research_result)
             research_output = research_result.final_output
 
+        # Additional validation - check for common failure patterns
+        failure_indicators = [
+            "no information available",
+            "cannot find",
+            "unable to determine",
+            "error occurred",
+            "search unavailable"
+        ]
+
+        if any(indicator in research_output.lower() for indicator in failure_indicators):
+            logger.warning("Research output indicates potential failure, attempting enhanced recovery")
+            # Try more specific recovery approach
+            enhanced_task = f"""ENHANCED RESEARCH TASK: {task}
+
+REQUIREMENTS:
+1. Use list_files() to check ALL available files first
+2. Try smart_file_reader() for any relevant files found
+3. Use specialized search tools if this involves academic/scientific content
+4. If web search fails, try search_academic_papers() or search_specialized_database()
+5. Provide detailed explanation of what you tried and found
+
+Be thorough and systematic. Do not give up after first attempt."""
+
+            try:
+                enhanced_result = await Runner.run(gaia_agent, enhanced_task)
+                log_agent_output(enhanced_result)
+                enhanced_output = enhanced_result.final_output
+
+                # Use enhanced output if it's more substantial
+                if enhanced_output and len(enhanced_output.strip()) > len(research_output.strip()):
+                    research_output = enhanced_output
+                    logger.info("Enhanced recovery successful")
+            except Exception as e:
+                logger.warning(f"Enhanced recovery failed: {e}")
+
         # Get conversation history from research phase
         conversation_history = []
         for item in research_result.new_items:

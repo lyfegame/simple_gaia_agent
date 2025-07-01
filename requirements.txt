@@ -8,3 +8,15 @@ litellm
 pandas
 openpyxl
 xlrd
+duckduckgo-search
+PyPDF2
+python-pptx
+python-docx
+Pillow
+opencv-python
+eyed3
+mutagen
+scipy
+numpy
+lxml
+xmltodict
