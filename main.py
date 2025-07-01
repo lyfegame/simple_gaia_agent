@@ -65,7 +65,15 @@ async def run_task(task: str, file_path: str = None):
 Research Agent Output:
 {research_output}
 
-Based on the research above, provide a clear, concise answer to the original task."""
+IMPORTANT: Read the original task very carefully for specific formatting requirements.
+Pay attention to phrases like:
+- "Just give the number" or "Just the number" - means provide ONLY the number
+- "without articles" - means no "a", "an", "the"
+- "no punctuation" - means no quotes, periods, commas
+- Specific formats requested - follow them exactly
+- If asking for thousands of something - provide the number of thousands, not the full number
+
+Based on the research above, provide a clear, concise answer to the original task following any formatting requirements exactly."""
 
     try:
         final_result = await Runner.run(answer_agent, answer_input)
