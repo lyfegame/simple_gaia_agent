@@ -48,13 +48,18 @@ async def run_task(task: str, file_path: str = None):
             log_agent_output(research_result)
             research_output = research_result.final_output
 
-        # Additional validation - check for common failure patterns
+        # Enhanced validation - check for common failure patterns
         failure_indicators = [
             "no information available",
             "cannot find",
             "unable to determine",
             "error occurred",
-            "search unavailable"
+            "search unavailable",
+            "no papers found",
+            "no snapshots found",
+            "file not found",
+            "video file not found",
+            "insufficient research"
         ]
 
         if any(indicator in research_output.lower() for indicator in failure_indicators):
@@ -62,14 +67,23 @@ async def run_task(task: str, file_path: str = None):
             # Try more specific recovery approach
             enhanced_task = f"""ENHANCED RESEARCH TASK: {task}
 
-REQUIREMENTS:
+CRITICAL REQUIREMENTS:
 1. Use list_files() to check ALL available files first
 2. Try smart_file_reader() for any relevant files found
-3. Use specialized search tools if this involves academic/scientific content
-4. If web search fails, try search_academic_papers() or search_specialized_database()
-5. Provide detailed explanation of what you tried and found
+3. For ArXiv tasks: Use search_arxiv_api() with proper categories (hep-lat, etc.)
+4. For historical web data: Use search_wayback_machine() with specific dates
+5. For video analysis: Use analyze_video_file() for content extraction
+6. For Excel data: Use read_excel() and look for date columns to find oldest/newest entries
+7. If web search fails, try search_academic_papers() or search_specialized_database()
+8. Always provide specific details about what you found, not generic failure messages
 
-Be thorough and systematic. Do not give up after first attempt."""
+TASK ANALYSIS:
+- If this involves counting ArXiv papers, use search_arxiv_api()
+- If this involves "oldest" entries in data, look for date columns
+- If this involves historical websites, use search_wayback_machine()
+- If this involves video content, use analyze_video_file()
+
+Be thorough and systematic. Try multiple approaches before concluding."""
 
             try:
                 enhanced_result = await Runner.run(gaia_agent, enhanced_task)
