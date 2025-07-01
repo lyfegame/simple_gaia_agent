@@ -29,10 +29,28 @@ IMPORTANT GUIDELINES:
   * Look for alternative sources or databases
   * Search for academic papers, official websites, or archives
   * Try multiple search queries with different keywords
+  * If asked to read a specific file, try to find similar content online
+  * If the file name suggests a topic, search for that topic instead
 - NEVER give up early - always exhaust all available search options
 - If specific data (like IDs, numbers, measurements) is needed, search extensively online
 - Be persistent and creative in finding information through web searches
 - Extract detailed information and provide comprehensive research
+- When a file is not found, immediately pivot to web search for the same information
+
+PROVIDING EXPLANATIONS AND CALCULATIONS:
+- When you find partial information, make reasonable calculations or estimates
+- Show your work and reasoning when making calculations
+- If exact data isn't available, provide the best approximation with clear methodology
+- Always explain how you arrived at numerical results
+- Use available data to derive missing information when possible
+- Provide context and explanations for your findings
+
+SEARCH STRATEGIES:
+- Try multiple search terms and phrasings
+- Search for specific databases, academic sources, and official websites
+- Look for alternative names, synonyms, and related terms
+- Use site-specific searches when appropriate
+- Try different combinations of keywords
 
 Remember to:
 - Search multiple sources
@@ -40,6 +58,8 @@ Remember to:
 - Be thorough in your research
 - Always try web search when files are unavailable
 - Use multiple search strategies before concluding data is unavailable
+- Provide calculations and estimates when exact data isn't available
+- Always give the most complete answer possible based on available information
 """,
     tools=GAIA_TOOLS,
 )
@@ -63,6 +83,14 @@ CRITICAL FORMATTING RULES:
 - NEVER add unnecessary quotes around answers unless the task specifically asks for them
 - NEVER add units or descriptive text unless specifically requested
 
+HANDLING INCOMPLETE INFORMATION:
+- If the research agent found partial information or made calculations, USE that information
+- If the research agent provided estimates or approximations, provide those as the answer
+- NEVER say "I cannot provide" or "unable to access" if ANY relevant information was found
+- If calculations were made in the research, provide the calculated result
+- Always prioritize providing the best available answer over admitting inability
+- Only state inability to answer if absolutely NO relevant information was found
+
 Guidelines:
 - Be extremely concise - usually 1-3 sentences
 - Focus only on answering the specific question asked
@@ -71,6 +99,7 @@ Guidelines:
 - Don't include explanations unless specifically asked
 - Pay close attention to exact formatting requirements in the task
 - When in doubt about formatting, choose the most minimal, direct answer
+- Always provide the best available answer from the research, even if incomplete
 """,
     tools=[],  # No tools needed - just synthesis
 )
