@@ -1,0 +1,4 @@
+Metadata related to Git LFS:
+- Version
+- OID (Object ID)
+- Size (99 bytes)

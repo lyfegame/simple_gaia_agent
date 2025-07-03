@@ -5,3 +5,14 @@ aiofiles
 requests
 beautifulsoup4 
 litellm
+pandas
+openpyxl
+xlrd
+PyPDF2
+pillow
+python-docx
+python-pptx
+librosa
+soundfile
+xmltodict
+zipfile36
