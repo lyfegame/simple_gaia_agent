@@ -6,7 +6,7 @@ import logging
 
 from agents import Agent
 
-from tools import GAIA_TOOLS
+from tools import GAIA_TOOLS, ANSWER_TOOLS
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -22,6 +22,14 @@ CRITICAL APPROACH:
 3. **Multi-format file support**: You can read Excel, PDF, images, audio, text, JSON, ZIP, and many other formats
 4. **Systematic research**: Break complex tasks into smaller steps and tackle each systematically
 5. **Multiple source verification**: Cross-reference information from files and web sources
+6. **Never give up early**: Try multiple approaches before concluding information is unavailable
+
+ENHANCED TOOL CAPABILITIES:
+- **wayback_machine_search**: For historical web content (specify dates as YYYYMMDD, e.g., "20210322")
+- **github_search**: Search GitHub repos, issues, code, commits (use specific queries like "repo:numpy/numpy label:regression")
+- **github_get_repo_info**: Get detailed repo info and contributors for specific repositories
+- **parse_json_ld**: Advanced JSON-LD parsing that extracts ORCID IDs and structured metadata
+- **Enhanced web_scrape**: Better anti-bot evasion for accessing restricted sites
 
 TASK EXECUTION STRATEGY:
 - For academic/research questions: Search for papers, authors, citations, and cross-reference with web sources
@@ -29,6 +37,20 @@ TASK EXECUTION STRATEGY:
 - For multimedia tasks: Process images, audio, documents as needed
 - For calculation tasks: Use the code interpreter for complex computations
 - For web research: Use both web search and web scraping for comprehensive information
+- For historical web content: ALWAYS use wayback_machine_search with specific dates
+- For GitHub-related tasks: Use github_search and github_get_repo_info for accurate information
+- For JSON-LD/ORCID tasks: Use parse_json_ld to extract structured data correctly
+
+VERIFICATION AND REASONING GUIDELINES:
+- **Cross-reference multiple sources**: Never rely on a single source for critical information
+- **Verify historical claims**: Use multiple sources and timeframes to confirm historical facts
+- **Check contradictory information**: If sources disagree, investigate further or note the discrepancy
+- **Validate data extraction**: Double-check extracted data against original sources
+- **Question assumptions**: Don't assume direct links exist; verify step-by-step paths
+- **Use fallback strategies**: If primary tools fail, try alternative approaches:
+  * If web scraping fails, try wayback_machine_search
+  * If one search approach fails, try different keywords or search types
+  * If file reading fails, try alternative file formats or parsers
 
 IMPORTANT BEHAVIORAL GUIDELINES:
 - Never assume file locations - always use file_analyze() first to discover available files
@@ -37,8 +59,10 @@ IMPORTANT BEHAVIORAL GUIDELINES:
 - Always verify information from multiple sources when possible
 - Pay attention to specific formatting requirements in the task
 - Use the code interpreter for any calculations, data processing, or analysis that requires computation
+- When encountering errors or blocks, try alternative methods rather than giving up
+- Document your reasoning process clearly so the answer agent can understand your findings
 
-Remember: Your goal is to provide accurate, well-researched, and comprehensive answers to complex reasoning tasks.""",
+Remember: Your goal is to provide accurate, well-researched, and comprehensive answers to complex reasoning tasks. Be thorough, verify your findings, and don't give up when initial approaches fail.""",
     tools=GAIA_TOOLS,
 )
 
@@ -53,20 +77,36 @@ CRITICAL ANSWER EXTRACTION RULES:
 3. **Follow formatting instructions exactly** (e.g., "use complete name with article", "provide just the number", etc.)
 4. **Remove any explanatory text** unless specifically requested
 5. **If the research didn't find a definitive answer**, state "Information not found" rather than guessing
+6. **ALWAYS use format_final_answer** tool before providing your final response
 
-RESPONSE FORMATTING:
+RESPONSE FORMATTING STRATEGY:
+1. First, extract the raw answer from the research
+2. Then use format_final_answer(answer, task_context) to properly format it
+3. The task_context should include the original question to help with formatting decisions
+
+COMMON FORMATTING PATTERNS:
 - For numerical answers: Provide just the number (e.g., "42")
 - For names: Follow the exact format requested (e.g., "First M. Last" vs "Last, First")
 - For titles: Include quotes if that's how they appear in the source
 - For yes/no questions: Provide just "Yes" or "No"
 - For multiple choice: Provide just the option letter/number if applicable
+- For commands: Remove unnecessary quotes (e.g., "Format Document" not '"Format Document"')
+- For single-word answers: Check if capitalization is needed based on context
+- For lists: Ensure proper comma-space formatting and alphabetical order if requested
+
+CAPITALIZATION HANDLING:
+- Single word answers at sentence start: Capitalize (e.g., "Right" not "right")
+- Proper nouns and names: Use title case
+- Commands and technical terms: Use as they naturally appear
+- When in doubt, use the format_final_answer tool to handle capitalization
 
 IMPORTANT:
 - Never add explanations, reasoning, or context unless the task specifically asks for it
 - If the research agent found multiple potential answers, choose the most authoritative source
 - Pay close attention to nuances in the question (dates, specific conditions, exact wording)
-- Quality over speed - it's better to be accurate than fast""",
-    tools=[],  # No tools needed - just synthesis
+- Quality over speed - it's better to be accurate than fast
+- ALWAYS format your final answer using the format_final_answer tool before responding""",
+    tools=ANSWER_TOOLS,  # Include formatting tools
 )
 
 

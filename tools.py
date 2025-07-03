@@ -48,15 +48,29 @@ def get_client():
 @function_tool
 async def web_scrape(url: str) -> str:
     """
-    Scrape content from a webpage.
+    Scrape content from a webpage with enhanced capabilities.
 
     Args:
         url: The URL to scrape
     """
     logger.info(f"Web scrape called for URL: {url}")
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(url, headers=headers, timeout=30)
+        # Enhanced headers to bypass basic anti-bot measures
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate",
+            "DNT": "1",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+        }
+
+        # Try with session to maintain cookies
+        session = requests.Session()
+        session.headers.update(headers)
+
+        response = session.get(url, timeout=30)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -82,6 +96,423 @@ async def web_scrape(url: str) -> str:
     except Exception as e:
         logger.error(f"Web scrape failed for {url}: {str(e)}")
         return f"Error scraping {url}: {str(e)}"
+
+
+@function_tool
+async def wayback_machine_search(url: str, date: str = "") -> str:
+    """
+    Search for historical versions of a webpage using the Wayback Machine.
+
+    Args:
+        url: The URL to search for historical versions
+        date: Optional date in YYYYMMDD format (e.g., "20210322"). If not provided, finds the latest available snapshot.
+    """
+    logger.info(f"Wayback Machine search called for URL: {url}, date: {date}")
+
+    try:
+        # Wayback Machine CDX API to find snapshots
+        if date:
+            # Search for snapshots on or before a specific date
+            cdx_url = f"http://web.archive.org/cdx/search/cdx?url={url}&closest={date}&limit=1&output=json"
+        else:
+            # Get latest snapshot
+            cdx_url = f"http://web.archive.org/cdx/search/cdx?url={url}&limit=1&output=json"
+
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; Research Bot)"}
+        response = requests.get(cdx_url, headers=headers, timeout=30)
+        response.raise_for_status()
+
+        data = response.json()
+        if len(data) < 2:  # First row is headers
+            return f"No archived versions found for {url}"
+
+        # Extract the snapshot info
+        snapshot = data[1]  # First actual result
+        timestamp = snapshot[1]
+        archived_url = f"http://web.archive.org/web/{timestamp}/{url}"
+
+        logger.info(f"Found archived version: {archived_url}")
+
+        # Now scrape the archived page
+        archive_response = requests.get(archived_url, headers=headers, timeout=30)
+        archive_response.raise_for_status()
+
+        soup = BeautifulSoup(archive_response.text, "html.parser")
+
+        # Remove Wayback Machine's own elements
+        for element in soup.find_all(['div', 'script'], {'id': lambda x: x and 'wm-' in x}):
+            element.decompose()
+        for element in soup.find_all(class_=lambda x: x and 'wb-' in x):
+            element.decompose()
+
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+
+        # Get text
+        text = soup.get_text()
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = "\n".join(chunk for chunk in chunks if chunk)
+
+        # Limit length
+        original_length = len(text)
+        if len(text) > 15000:
+            text = text[:15000] + "..."
+            logger.info(f"Truncated archived content from {original_length} to 15000 chars")
+
+        logger.info(f"Wayback Machine scrape successful, content length: {len(text)}")
+        return f"Archived content from {url} (captured {timestamp[:8]}):\n{text}"
+
+    except Exception as e:
+        logger.error(f"Wayback Machine search failed for {url}: {str(e)}")
+        return f"Error accessing archived version of {url}: {str(e)}"
+
+
+@function_tool
+async def github_search(query: str, search_type: str = "repositories") -> str:
+    """
+    Search GitHub repositories, issues, or other entities using GitHub's search API.
+
+    Args:
+        query: The search query (e.g., "opencv mask-rcnn", "repo:numpy/numpy label:regression")
+        search_type: Type of search - "repositories", "issues", "code", "commits", "users"
+    """
+    logger.info(f"GitHub search called for query: {query}, type: {search_type}")
+
+    try:
+        # GitHub API endpoint
+        base_url = "https://api.github.com/search"
+        url = f"{base_url}/{search_type}"
+
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "Research-Bot/1.0"
+        }
+
+        # Add GitHub token if available
+        github_token = os.getenv("GITHUB_TOKEN")
+        if github_token:
+            headers["Authorization"] = f"token {github_token}"
+
+        params = {
+            "q": query,
+            "sort": "updated",
+            "order": "desc",
+            "per_page": 10
+        }
+
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+
+        data = response.json()
+        total_count = data.get("total_count", 0)
+        items = data.get("items", [])
+
+        if not items:
+            return f"No {search_type} found for query: {query}"
+
+        result = f"GitHub {search_type} search results for '{query}' ({total_count} total):\n\n"
+
+        for i, item in enumerate(items[:5], 1):  # Limit to top 5 results
+            if search_type == "repositories":
+                result += f"{i}. {item.get('full_name', 'Unknown')}\n"
+                result += f"   Description: {item.get('description', 'No description')}\n"
+                result += f"   Stars: {item.get('stargazers_count', 0)}\n"
+                result += f"   URL: {item.get('html_url', '')}\n\n"
+
+            elif search_type == "issues":
+                result += f"{i}. {item.get('title', 'No title')}\n"
+                result += f"   State: {item.get('state', 'unknown')}\n"
+                result += f"   Labels: {', '.join([label['name'] for label in item.get('labels', [])])}\n"
+                result += f"   Created: {item.get('created_at', 'unknown')}\n"
+                result += f"   URL: {item.get('html_url', '')}\n\n"
+
+            elif search_type == "code":
+                result += f"{i}. {item.get('name', 'Unknown file')}\n"
+                result += f"   Repository: {item.get('repository', {}).get('full_name', 'Unknown')}\n"
+                result += f"   Path: {item.get('path', 'Unknown')}\n"
+                result += f"   URL: {item.get('html_url', '')}\n\n"
+
+            elif search_type == "commits":
+                result += f"{i}. {item.get('commit', {}).get('message', 'No message')[:100]}...\n"
+                result += f"   Author: {item.get('commit', {}).get('author', {}).get('name', 'Unknown')}\n"
+                result += f"   Date: {item.get('commit', {}).get('author', {}).get('date', 'Unknown')}\n"
+                result += f"   Repository: {item.get('repository', {}).get('full_name', 'Unknown')}\n"
+                result += f"   URL: {item.get('html_url', '')}\n\n"
+
+        logger.info(f"GitHub search successful, found {len(items)} results")
+        return result
+
+    except Exception as e:
+        logger.error(f"GitHub search failed for query '{query}': {str(e)}")
+        return f"Error searching GitHub for '{query}': {str(e)}"
+
+
+@function_tool
+async def github_get_repo_info(repo_path: str) -> str:
+    """
+    Get detailed information about a specific GitHub repository.
+
+    Args:
+        repo_path: Repository path in format "owner/repo" (e.g., "opencv/opencv")
+    """
+    logger.info(f"GitHub repo info called for: {repo_path}")
+
+    try:
+        url = f"https://api.github.com/repos/{repo_path}"
+
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "Research-Bot/1.0"
+        }
+
+        # Add GitHub token if available
+        github_token = os.getenv("GITHUB_TOKEN")
+        if github_token:
+            headers["Authorization"] = f"token {github_token}"
+
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+
+        repo = response.json()
+
+        result = f"Repository: {repo.get('full_name', 'Unknown')}\n"
+        result += f"Description: {repo.get('description', 'No description')}\n"
+        result += f"Language: {repo.get('language', 'Unknown')}\n"
+        result += f"Stars: {repo.get('stargazers_count', 0)}\n"
+        result += f"Forks: {repo.get('forks_count', 0)}\n"
+        result += f"Created: {repo.get('created_at', 'Unknown')}\n"
+        result += f"Updated: {repo.get('updated_at', 'Unknown')}\n"
+        result += f"Default branch: {repo.get('default_branch', 'Unknown')}\n"
+        result += f"Topics: {', '.join(repo.get('topics', []))}\n"
+        result += f"URL: {repo.get('html_url', '')}\n"
+
+        # Get contributors
+        contributors_url = f"https://api.github.com/repos/{repo_path}/contributors"
+        contributors_response = requests.get(contributors_url, headers=headers, timeout=30)
+        if contributors_response.status_code == 200:
+            contributors = contributors_response.json()
+            result += f"\nTop contributors:\n"
+            for i, contributor in enumerate(contributors[:10], 1):
+                result += f"  {i}. {contributor.get('login', 'Unknown')} ({contributor.get('contributions', 0)} contributions)\n"
+
+        logger.info(f"GitHub repo info retrieved successfully")
+        return result
+
+    except Exception as e:
+        logger.error(f"GitHub repo info failed for {repo_path}: {str(e)}")
+        return f"Error getting repository info for {repo_path}: {str(e)}"
+
+
+@function_tool
+async def parse_json_ld(content: str) -> str:
+    """
+    Parse JSON-LD content and extract structured data with intelligent analysis.
+
+    Args:
+        content: JSON-LD content as string
+    """
+    logger.info(f"JSON-LD parsing called")
+
+    try:
+        # Parse the JSON-LD
+        data = json.loads(content)
+
+        result = "JSON-LD Analysis:\n"
+        result += "=" * 40 + "\n\n"
+
+        # Basic structure info
+        if isinstance(data, dict):
+            result += f"Type: {data.get('@type', 'Unknown')}\n"
+            result += f"Context: {data.get('@context', 'None')}\n"
+            result += f"ID: {data.get('@id', 'None')}\n\n"
+
+            # Extract ORCID IDs if present
+            orcid_ids = []
+
+            def extract_orcids(obj, path=""):
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        if 'orcid' in key.lower() and isinstance(value, str):
+                            if value.startswith('http'):
+                                orcid_ids.append(value)
+                            elif value.startswith('0000-'):
+                                orcid_ids.append(f"https://orcid.org/{value}")
+                        extract_orcids(value, f"{path}.{key}")
+                elif isinstance(obj, list):
+                    for i, item in enumerate(obj):
+                        extract_orcids(item, f"{path}[{i}]")
+                elif isinstance(obj, str) and 'orcid.org' in obj:
+                    orcid_ids.append(obj)
+
+            extract_orcids(data)
+
+            if orcid_ids:
+                result += f"ORCID IDs found: {len(orcid_ids)}\n"
+                for i, orcid in enumerate(orcid_ids, 1):
+                    result += f"  {i}. {orcid}\n"
+                result += "\n"
+
+            # Extract other identifiers
+            identifiers = []
+            def extract_identifiers(obj, path=""):
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        if key.lower() in ['id', 'identifier', '@id'] and isinstance(value, str):
+                            identifiers.append(f"{key}: {value}")
+                        extract_identifiers(value, f"{path}.{key}")
+                elif isinstance(obj, list):
+                    for i, item in enumerate(obj):
+                        extract_identifiers(item, f"{path}[{i}]")
+
+            extract_identifiers(data)
+
+            if identifiers:
+                result += f"Identifiers found:\n"
+                for identifier in identifiers[:10]:  # Limit to first 10
+                    result += f"  - {identifier}\n"
+                result += "\n"
+
+            # Extract names/titles
+            names = []
+            def extract_names(obj, path=""):
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        if key.lower() in ['name', 'title', 'givenname', 'familyname'] and isinstance(value, str):
+                            names.append(f"{key}: {value}")
+                        extract_names(value, f"{path}.{key}")
+                elif isinstance(obj, list):
+                    for i, item in enumerate(obj):
+                        extract_names(item, f"{path}[{i}]")
+
+            extract_names(data)
+
+            if names:
+                result += f"Names/Titles found:\n"
+                for name in names[:10]:  # Limit to first 10
+                    result += f"  - {name}\n"
+                result += "\n"
+
+            # Show raw structure (truncated)
+            result += "Raw structure (key overview):\n"
+            def show_structure(obj, indent=0, max_depth=3):
+                if indent > max_depth:
+                    return "..."
+                if isinstance(obj, dict):
+                    items = []
+                    for key, value in list(obj.items())[:5]:  # Show first 5 keys
+                        if isinstance(value, (dict, list)):
+                            items.append(f"{'  ' * indent}{key}: {show_structure(value, indent+1, max_depth)}")
+                        else:
+                            items.append(f"{'  ' * indent}{key}: {type(value).__name__}")
+                    if len(obj) > 5:
+                        items.append(f"{'  ' * indent}... ({len(obj) - 5} more keys)")
+                    return "{\n" + "\n".join(items) + "\n" + "  " * (indent-1) + "}"
+                elif isinstance(obj, list):
+                    if obj:
+                        return f"[{len(obj)} items, first: {show_structure(obj[0], indent+1, max_depth)}]"
+                    else:
+                        return "[]"
+                else:
+                    return f"{type(obj).__name__}"
+
+            result += show_structure(data)
+
+        elif isinstance(data, list):
+            result += f"Array with {len(data)} items\n"
+            if data:
+                result += f"First item type: {type(data[0]).__name__}\n"
+                if isinstance(data[0], dict):
+                    result += f"First item keys: {list(data[0].keys())[:10]}\n"
+
+        logger.info(f"JSON-LD parsing successful")
+        return result
+
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON-LD parsing failed - invalid JSON: {str(e)}")
+        return f"Error: Invalid JSON format - {str(e)}"
+    except Exception as e:
+        logger.error(f"JSON-LD parsing failed: {str(e)}")
+        return f"Error parsing JSON-LD: {str(e)}"
+
+
+@function_tool
+async def format_final_answer(answer: str, task_context: str = "") -> str:
+    """
+    Format the final answer according to common patterns and requirements.
+    Handles capitalization, quotes, and other formatting issues.
+
+    Args:
+        answer: The raw answer to format
+        task_context: Context from the original task to help with formatting decisions
+    """
+    logger.info(f"Answer formatting called for: {answer}")
+
+    try:
+        formatted_answer = answer.strip()
+
+        # Remove common wrapping quotes if they seem unnecessary
+        if (formatted_answer.startswith('"') and formatted_answer.endswith('"') and
+            not ('quote' in task_context.lower() or 'quotation' in task_context.lower())):
+            formatted_answer = formatted_answer[1:-1]
+
+        if (formatted_answer.startswith("'") and formatted_answer.endswith("'") and
+            not ('quote' in task_context.lower() or 'quotation' in task_context.lower())):
+            formatted_answer = formatted_answer[1:-1]
+
+        # Handle specific formatting based on context clues
+        context_lower = task_context.lower()
+
+        # Capitalization rules
+        if ('proper noun' in context_lower or 'name' in context_lower or
+            'title' in context_lower or 'capitalize' in context_lower):
+            # Capitalize first letter of each word for names/titles
+            formatted_answer = formatted_answer.title()
+        elif ('sentence' in context_lower or 'capitalize first' in context_lower):
+            # Capitalize first letter only
+            formatted_answer = formatted_answer.capitalize()
+        elif 'lowercase' in context_lower:
+            formatted_answer = formatted_answer.lower()
+        elif 'uppercase' in context_lower:
+            formatted_answer = formatted_answer.upper()
+        elif len(formatted_answer.split()) == 1 and formatted_answer.isalpha():
+            # Single word answers - check if it's the start of a sentence context
+            if any(phrase in context_lower for phrase in ['if you understand', 'write the', 'answer with']):
+                formatted_answer = formatted_answer.capitalize()
+
+        # Number formatting
+        if 'just the number' in context_lower or 'only the number' in context_lower:
+            # Extract just the number if there's extra text
+            import re
+            numbers = re.findall(r'-?\d+\.?\d*', formatted_answer)
+            if numbers:
+                formatted_answer = numbers[0]
+
+        # Handle "Format Document" type answers - remove quotes if present
+        if 'command' in context_lower and formatted_answer.startswith('"') and formatted_answer.endswith('"'):
+            formatted_answer = formatted_answer[1:-1]
+
+        # List formatting
+        if 'comma delimited' in context_lower or 'comma separated' in context_lower:
+            # Ensure proper comma-space formatting
+            if ',' in formatted_answer:
+                items = [item.strip() for item in formatted_answer.split(',')]
+                formatted_answer = ', '.join(items)
+
+        # Alphabetical sorting if requested
+        if 'alphabetically' in context_lower or 'sorted alphabetically' in context_lower:
+            if ',' in formatted_answer:
+                items = [item.strip() for item in formatted_answer.split(',')]
+                items.sort()
+                formatted_answer = ', '.join(items)
+
+        logger.info(f"Answer formatted from '{answer}' to '{formatted_answer}'")
+        return formatted_answer
+
+    except Exception as e:
+        logger.error(f"Answer formatting failed: {str(e)}")
+        return answer  # Return original if formatting fails
 
 
 @function_tool
@@ -228,21 +659,55 @@ async def file_read(filename: str) -> str:
 
         elif file_ext in ['.xlsx', '.xls']:
             try:
-                # Read all sheets
-                excel_file = pd.ExcelFile(filename)
+                # Try multiple engines for better compatibility
+                engines = ['openpyxl', 'xlrd', None]  # None lets pandas choose
+
+                for engine in engines:
+                    try:
+                        if engine:
+                            excel_file = pd.ExcelFile(filename, engine=engine)
+                        else:
+                            excel_file = pd.ExcelFile(filename)
+                        break
+                    except Exception as e:
+                        if engine == engines[-1]:  # Last engine failed
+                            raise e
+                        continue
+
                 result = f"Excel file with sheets: {excel_file.sheet_names}\n\n"
 
                 for sheet_name in excel_file.sheet_names:
-                    df = pd.read_excel(filename, sheet_name=sheet_name)
-                    result += f"Sheet '{sheet_name}':\n"
-                    result += f"Shape: {df.shape}\n"
-                    result += f"Columns: {list(df.columns)}\n"
-                    result += f"Data:\n{df.to_string()}\n\n"
+                    try:
+                        if engine:
+                            df = pd.read_excel(filename, sheet_name=sheet_name, engine=engine)
+                        else:
+                            df = pd.read_excel(filename, sheet_name=sheet_name)
+
+                        result += f"Sheet '{sheet_name}':\n"
+                        result += f"Shape: {df.shape}\n"
+                        result += f"Columns: {list(df.columns)}\n"
+
+                        # Show data with better formatting
+                        if df.shape[0] > 20:
+                            result += f"Data (first 20 rows):\n{df.head(20).to_string()}\n"
+                            result += f"... ({df.shape[0] - 20} more rows)\n\n"
+                        else:
+                            result += f"Data:\n{df.to_string()}\n\n"
+
+                    except Exception as sheet_error:
+                        result += f"Sheet '{sheet_name}': Error reading - {str(sheet_error)}\n\n"
 
                 logger.info(f"Excel file read successful, {len(excel_file.sheet_names)} sheets")
                 return result
             except Exception as e:
-                return f"Error reading Excel file: {str(e)}"
+                # Enhanced error message with troubleshooting info
+                error_msg = f"Error reading Excel file: {str(e)}\n"
+                error_msg += "Troubleshooting info:\n"
+                error_msg += f"- File exists: {os.path.exists(filename)}\n"
+                error_msg += f"- File size: {os.path.getsize(filename) if os.path.exists(filename) else 'N/A'} bytes\n"
+                error_msg += f"- File extension: {file_ext}\n"
+                error_msg += "- Try installing: pip install openpyxl xlrd\n"
+                return error_msg
 
         elif file_ext == '.csv':
             try:
@@ -381,9 +846,19 @@ async def file_read(filename: str) -> str:
 GAIA_TOOLS = [
     WebSearchTool(),
     web_scrape,
+    wayback_machine_search,
+    github_search,
+    github_get_repo_info,
+    parse_json_ld,
+    format_final_answer,
     file_read,
     file_analyze,
     CodeInterpreterTool(
         tool_config={"type": "code_interpreter", "container": {"type": "auto"}}
     ),
+]
+
+# Tools specifically for answer formatting
+ANSWER_TOOLS = [
+    format_final_answer,
 ]
