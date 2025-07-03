@@ -16,3 +16,9 @@ librosa
 soundfile
 xmltodict
 zipfile36
+# New dependencies for Generation 3 improvements
+pytesseract
+opencv-python
+numpy
+yt-dlp
+scikit-image
