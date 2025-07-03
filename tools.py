@@ -9,7 +9,6 @@ import requests
 from agents import (
     RunContextWrapper,
     function_tool,
-    WebSearchTool,
     CodeInterpreterTool,
 )
 from bs4 import BeautifulSoup
@@ -32,6 +31,29 @@ def get_client():
     if _client is None:
         _client = AsyncOpenAI()
     return _client
+
+
+@function_tool
+async def web_search(query: str) -> str:
+    """
+    Search the web for information.
+
+    Args:
+        query: The search query
+    """
+    logger.info(f"Web search called with query: {query}")
+    try:
+        client = get_client()
+        response = await client.responses.create(
+            model="gpt-4.1", tools=[{"type": "web_search_preview"}], input=query
+        )
+        logger.info(
+            f"Web search successful, response length: {len(response.output_text)}"
+        )
+        return response.output_text
+    except Exception as e:
+        logger.error(f"Web search failed: {str(e)}")
+        return f"Web search error: {str(e)}"
 
 
 @function_tool
@@ -94,7 +116,7 @@ async def file_read(ctx: RunContextWrapper, filename: str) -> str:
 
 # Available tools
 GAIA_TOOLS = [
-    WebSearchTool(),
+    web_search,
     web_scrape,
     file_read,
     CodeInterpreterTool(

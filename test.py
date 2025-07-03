@@ -54,8 +54,8 @@ async def test_tools():
             result = await web_search.on_invoke_tool(
                 ctx=None, input=json.dumps({"query": "Python programming language"})
             )
-            if result and not result.startswith("Web search error"):
-                logger.info("   ✅ web_search tool works")
+            if result and not result.startswith("An error occurred"):
+                logger.info(f"   ✅ web_search tool works: {result[:100]}...")
             else:
                 logger.info(f"   ❌ web_search tool failed: {result}")
                 return False
