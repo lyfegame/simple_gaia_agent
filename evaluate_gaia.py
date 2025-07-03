@@ -174,7 +174,12 @@ def main():
     parser.add_argument(
         "--limit", type=int, help="Limit the number of tasks to evaluate"
     )
-    parser.add_argument("--task-id", type=str, help="Evaluate only a specific task ID")
+    parser.add_argument(
+        "--task-ids",
+        type=str,
+        nargs="+",
+        help="Evaluate only specific task IDs (space-separated list)",
+    )
     parser.add_argument(
         "--level",
         type=int,
@@ -205,19 +210,32 @@ def main():
 
     tasks = load_validation_tasks(metadata_path)
 
-    # Filter tasks if requested
-    if args.task_id:
-        tasks = [t for t in tasks if t.get("task_id") == args.task_id]
+    if args.task_ids:
+        requested_task_ids = set(args.task_ids)
+        tasks = [t for t in tasks if t.get("task_id") in requested_task_ids]
+        found_task_ids = set(
+            t.get("task_id") for t in tasks if t.get("task_id") is not None
+        )
+
         if not tasks:
-            logger.error(f"Task ID not found: {args.task_id}")
+            logger.error(f"No tasks found for the provided task IDs: {args.task_ids}")
             sys.exit(1)
+
+        # Check if any requested task IDs were not found
+        missing_task_ids = requested_task_ids - found_task_ids
+        if missing_task_ids:
+            logger.warning(f"Task IDs not found: {sorted(list(missing_task_ids))}")
+
+        logger.info(
+            f"Filtered to {len(tasks)} tasks from task IDs: {sorted(found_task_ids)}"
+        )
 
     if args.level:
         tasks = [t for t in tasks if t.get("Level") == args.level]
         logger.info(f"Filtered to {len(tasks)} tasks of level {args.level}")
 
     # Clear previous results file if starting fresh
-    if not args.task_id and os.path.exists(results_dir / "evaluation_results.jsonl"):
+    if not args.task_ids and os.path.exists(results_dir / "evaluation_results.jsonl"):
         os.remove(results_dir / "evaluation_results.jsonl")
 
     # Run evaluation
